@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Weekly Report - Mycee Accessories Stock Control{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1>
+            <i class="bi bi-calendar-week"></i> Weekly Report
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('reports') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Reports
+        </a>
+    </div>
+</div>
+
+<!-- Date Selection -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('weekly_report') }}" class="row g-2">
+                    <div class="col-md-4">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" name="start_date" class="form-control" value="{{ start_date.strftime('%Y-%m-%d') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" name="end_date" class="form-control" value="{{ end_date.strftime('%Y-%m-%d') }}">
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> View Report
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h6 class="card-title">Total Sales</h6>
+                <h2>$ {{ "%.2f"|format(total_sales) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h6 class="card-title">Total Cost</h6>
+                <h2>$ {{ "%.2f"|format(total_cost) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h6 class="card-title">Total Profit</h6>
+                <h2>$ {{ "%.2f"|format(total_profit) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-secondary text-white">
+            <div class="card-body">
+                <h6 class="card-title">Avg Daily Sales</h6>
+                <h2>
+                    {% set days = (end_date - start_date).days + 1 %}
+                    $ {{ "%.2f"|format(total_sales / days if days > 0 else 0) }}
+                </h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Breakdown -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Daily Breakdown</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Sales</th>
+                            <th>Transactions</th>
+                            <th>Profit</th>
+                            <th>Avg Transaction</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for date, data in daily_data.items()|sort(reverse=True) %}
+                            <tr>
+                                <td><strong>{{ date.strftime('%d %b %Y') }}</strong></td>
+                                <td>$ {{ "%.2f"|format(data.sales) }}</td>
+                                <td>{{ data.count }}</td>
+                                <td><strong class="text-success">$ {{ "%.2f"|format(data.profit) }}</strong></td>
+                                <td>$ {{ "%.2f"|format(data.sales / data.count if data.count > 0 else 0) }}</td>
+                                <td>
+                                    <a href="{{ url_for('daily_report', date=date.strftime('%Y-%m-%d')) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">No data for this period</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

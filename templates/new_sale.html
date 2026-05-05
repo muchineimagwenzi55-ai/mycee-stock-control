@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}New Sale - Mycee Accessories Stock Control{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cart-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+    }
+    .cart-summary {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1>
+            <i class="bi bi-plus-circle"></i> Create New Sale
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Add Products to Sale</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="product_id" class="form-label">Select Product</label>
+                        <select class="form-select" id="product_id">
+                            <option value="">Choose a product...</option>
+                            {% for product in products %}
+                                <option value="{{ product.id }}" data-price="{{ product.selling_price }}" data-stock="{{ product.current_stock }}">
+                                    {{ product.name }} (Stock: {{ product.current_stock }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="quantity" class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="quantity" min="1" value="1">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="button" class="btn btn-success w-100" onclick="addToCart()">
+                            <i class="bi bi-plus-circle"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Sale Items</h5>
+            </div>
+            <div id="cart" class="card-body">
+                <p class="text-muted">No items added yet</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Sale Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="cart-summary">
+                    <div class="row mb-2">
+                        <div class="col">Total Items:</div>
+                        <div class="col text-end"><strong id="item_count">0</strong></div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col">Subtotal:</div>
+                        <div class="col text-end"><strong>₦<span id="subtotal">0.00</span></strong></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label for="discount" class="form-label mb-0">Discount (₦):</label>
+                        </div>
+                        <div class="col">
+                            <input type="number" class="form-control form-control-sm" id="discount" min="0" step="0.01" value="0" onchange="updateTotal()">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col">
+                            <strong>Total:</strong>
+                        </div>
+                        <div class="col text-end">
+                            <strong style="font-size: 24px; color: #28a745;">₦<span id="total">0.00</span></strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label for="notes" class="form-label">Notes</label>
+                    <textarea class="form-control form-control-sm" id="notes" rows="3" placeholder="Any additional notes for this sale..."></textarea>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <button type="button" class="btn btn-success btn-lg" onclick="completeSale()">
+                        <i class="bi bi-check-circle"></i> Complete Sale
+                    </button>
+                    <a href="{{ url_for('sales') }}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let cartItems = [];
+
+function addToCart() {
+    const productId = document.getElementById('product_id').value;
+    const quantity = parseInt(document.getElementById('quantity').value);
+    const productSelect = document.getElementById('product_id');
+    const selectedOption = productSelect.options[productSelect.selectedIndex];
+    
+    if (!productId || !quantity) {
+        alert('Please select a product and enter quantity');
+        return;
+    }
+    
+    const price = parseFloat(selectedOption.dataset.price);
+    const stock = parseInt(selectedOption.dataset.stock);
+    
+    if (quantity > stock) {
+        alert(`Insufficient stock. Available: ${stock}`);
+        return;
+    }
+    
+    // Check if product already in cart
+    const existing = cartItems.find(item => item.product_id == productId);
+    if (existing) {
+        if (existing.quantity + quantity > stock) {
+            alert(`Insufficient stock. Available: ${stock}`);
+            return;
+        }
+        existing.quantity += quantity;
+    } else {
+        cartItems.push({
+            product_id: productId,
+            product_name: selectedOption.text.split(' (Stock:')[0],
+            quantity: quantity,
+            unit_price: price
+        });
+    }
+    
+    renderCart();
+    document.getElementById('product_id').value = '';
+    document.getElementById('quantity').value = 1;
+}
+
+function removeFromCart(index) {
+    cartItems.splice(index, 1);
+    renderCart();
+}
+
+function renderCart() {
+    const cartDiv = document.getElementById('cart');
+    
+    if (cartItems.length === 0) {
+        cartDiv.innerHTML = '<p class="text-muted">No items added yet</p>';
+    } else {
+        let html = '<div>';
+        cartItems.forEach((item, index) => {
+            const subtotal = item.quantity * item.unit_price;
+            html += `
+                <div class="cart-item">
+                    <div>
+                        <strong>${item.product_name}</strong><br>
+                        <small class="text-muted">${item.quantity} × ₦${item.unit_price.toFixed(2)}</small>
+                    </div>
+                    <div class="text-end">
+                        <strong>₦${subtotal.toFixed(2)}</strong><br>
+                        <button class="btn btn-sm btn-danger" onclick="removeFromCart(${index})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        cartDiv.innerHTML = html;
+    }
+    
+    updateTotal();
+}
+
+function updateTotal() {
+    const subtotal = cartItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const discount = parseFloat(document.getElementById('discount').value) || 0;
+    const total = subtotal - discount;
+    
+    document.getElementById('item_count').textContent = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+    document.getElementById('total').textContent = Math.max(0, total).toFixed(2);
+}
+
+function completeSale() {
+    if (cartItems.length === 0) {
+        alert('Please add items to the sale');
+        return;
+    }
+    
+    const saleData = {
+        items: cartItems,
+        discount: parseFloat(document.getElementById('discount').value) || 0,
+        notes: document.getElementById('notes').value
+    };
+    
+    fetch('{{ url_for("new_sale") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(saleData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Sale completed successfully!');
+            window.location.href = data.redirect;
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred');
+    });
+}
+</script>
+
+{% endblock %}

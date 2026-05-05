@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Deduct Stock - Mycee Accessories Stock Control{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1>
+            <i class="bi bi-arrow-up-circle"></i> Deduct Stock
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('deduct_stock') }}">
+                    <div class="form-group mb-3">
+                        <label for="product_id" class="form-label">Product *</label>
+                        <select class="form-select" id="product_id" name="product_id" required>
+                            <option value="">Select a product...</option>
+                            {% for product in products %}
+                                <option value="{{ product.id }}">
+                                    {{ product.name }} (SKU: {{ product.sku }}) - Current: {{ product.current_stock }} units
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="quantity" class="form-label">Quantity to Deduct *</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" required min="1" step="1" placeholder="Enter quantity">
+                        <small class="form-text text-muted">Make sure you don't deduct more than available stock</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="reason" class="form-label">Reason for Deduction *</label>
+                        <select class="form-select" id="reason" name="reason" required>
+                            <option value="">Select reason...</option>
+                            <option value="damaged">Damaged Goods</option>
+                            <option value="loss">Loss/Missing</option>
+                            <option value="expired">Expired</option>
+                            <option value="inventory_adjustment">Inventory Adjustment</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="reference" class="form-label">Reference Number</label>
+                        <input type="text" class="form-control" id="reference" name="reference" placeholder="e.g., Damage Report Number">
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Reason for deduction, details..."></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('products') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-minus-circle"></i> Deduct Stock
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-header">
+                <h5 class="mb-0">Caution</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Stock Deducted:</strong> Decreases product inventory</p>
+                <p class="mb-0"><strong>Used for:</strong> Recording damaged items, missing stock, expired products, or adjustments</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
