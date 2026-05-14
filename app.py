@@ -40,9 +40,41 @@ def create_app(config_name=None):
     def load_user(user_id):
         return User.query.get(int(user_id))
     
+    def create_default_admin():
+        if not User.query.first():
+            username = app.config.get('ADMIN_USERNAME', 'admin').strip().lower()
+            email = app.config.get('ADMIN_EMAIL', 'admin@mycee.com').strip()
+            password = app.config.get('ADMIN_PASSWORD')
+            if not password:
+                app.logger.warning('ADMIN_PASSWORD is not set; using default admin password. Set ADMIN_PASSWORD in production.')
+                password = 'ChangeMe123!'
+            existing_user = User.query.filter(func.lower(User.username) == username).first()
+            if not existing_user:
+                admin = User(username=username, email=email, role='admin', is_active=True)
+                admin.set_password(password)
+                db.session.add(admin)
+                db.session.commit()
+                app.logger.info(f'Created default admin user {username} with email {email}')
+        
+        # Create Bright Tinotenda manager account if it doesn't exist
+        bright_username = 'brighttinotenda'
+        bright = User.query.filter_by(username=bright_username).first()
+        if not bright:
+            bright = User(
+                username=bright_username,
+                email='bright.tinotenda@mycee.com',
+                role='manager',
+                is_active=True
+            )
+            bright.set_password('Isabel2025')
+            db.session.add(bright)
+            db.session.commit()
+            app.logger.info(f'Created manager user {bright_username} with email bright.tinotenda@mycee.com')
+    
     # Create database tables
     with app.app_context():
         db.create_all()
+        create_default_admin()
     
     # Decorators
     def admin_required(f):
@@ -68,42 +100,52 @@ def create_app(config_name=None):
     # ==================== Authentication Routes ====================
     @app.route('/register', methods=['GET', 'POST'])
     def register():
+        user_exists = User.query.first() is not None
+        registration_enabled = app.config.get('REGISTRATION_ENABLED', False) or not user_exists
+
         if request.method == 'POST':
+            if not registration_enabled:
+                flash('Registration is closed. Please ask your administrator to create your account.', 'warning')
+                return redirect(url_for('login'))
+
             username = request.form.get('username')
             email = request.form.get('email')
             password = request.form.get('password')
             confirm_password = request.form.get('confirm_password')
-            
+
             if username:
                 username = username.strip().lower()
-            
+
             # Validation
             if not username or not email or not password:
                 flash('All fields are required.', 'danger')
                 return redirect(url_for('register'))
-            
+
             if password != confirm_password:
                 flash('Passwords do not match.', 'danger')
                 return redirect(url_for('register'))
-            
+
             if User.query.filter(func.lower(User.username) == username).first():
                 flash('Username already exists.', 'danger')
                 return redirect(url_for('register'))
-            
+
             if User.query.filter_by(email=email).first():
                 flash('Email already exists.', 'danger')
                 return redirect(url_for('register'))
-            
-            # Create user
-            user = User(username=username, email=email, role='user')
+
+            role = 'admin' if not user_exists else 'user'
+            user = User(username=username, email=email, role=role)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            
-            flash('Registration successful! Please log in.', 'success')
+
+            if role == 'admin':
+                flash('Admin registration successful. Please log in.', 'success')
+            else:
+                flash('Registration successful! Please log in.', 'success')
             return redirect(url_for('login'))
-        
-        return render_template('register.html')
+
+        return render_template('register.html', registration_enabled=registration_enabled)
     
     @app.route('/login', methods=['GET', 'POST'])
     def login():
