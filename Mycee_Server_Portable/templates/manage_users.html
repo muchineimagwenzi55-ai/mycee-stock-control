@@ -4,18 +4,10 @@
 
 {% block content %}
 <div class="row mb-4">
-    <div class="col-md-8">
+    <div class="col-md-12">
         <h1>
             <i class="bi bi-people"></i> Manage Users
         </h1>
-    </div>
-    <div class="col-md-4 text-end">
-        <a href="{{ url_for('manager_add_user') }}" class="btn btn-primary me-2">
-            <i class="bi bi-person-plus"></i> Add User
-        </a>
-        <a href="{{ url_for('reset_data') }}" class="btn btn-danger">
-            <i class="bi bi-exclamation-triangle"></i> Reset Data
-        </a>
     </div>
 </div>
 
@@ -30,8 +22,6 @@
                     <th>Role</th>
                     <th>Status</th>
                     <th>Joined</th>
-                    <th>Sales</th>
-                    <th>Movements</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -53,20 +43,13 @@
                             {% endif %}
                         </td>
                         <td>{{ user.created_at.strftime('%d %b %Y') }}</td>
-                        <td>{{ user.sales|length }}</td>
-                        <td>{{ user.stock_movements|length }}</td>
                         <td>
                             <div class="btn-group btn-group-sm" role="group">
-                                <a href="{{ url_for('user_activity', user_id=user.id) }}" class="btn btn-outline-primary" title="View activity">
-                                    <i class="bi bi-clock-history"></i>
-                                </a>
                                 <form method="POST" action="{{ url_for('change_user_role', user_id=user.id) }}" style="display:inline;">
                                     <select name="role" class="form-select form-select-sm" onchange="this.form.submit()">
                                         <option value="user" {% if user.role == 'user' %}selected{% endif %}>User</option>
                                         <option value="manager" {% if user.role == 'manager' %}selected{% endif %}>Manager</option>
-                                        {% if current_user.is_admin() %}
                                         <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
-                                        {% endif %}
                                     </select>
                                 </form>
                                 

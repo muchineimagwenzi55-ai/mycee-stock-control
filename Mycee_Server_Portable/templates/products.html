@@ -21,8 +21,8 @@
 <!-- Search -->
 <div class="row mb-4">
     <div class="col-md-12">
-        <form method="GET" action="{{ url_for('products') }}" id="product_search_form" class="input-group input-group-lg">
-            <input type="text" id="product_search" name="search" class="form-control" placeholder="Search by name or SKU..." value="{{ search }}" autocomplete="off">
+        <form method="GET" action="{{ url_for('products') }}" class="input-group input-group-lg">
+            <input type="text" name="search" class="form-control" placeholder="Search by name or SKU..." value="{{ search }}">
             <button class="btn btn-outline-secondary" type="submit">
                 <i class="bi bi-search"></i> Search
             </button>
@@ -46,7 +46,7 @@
                     <th>Action</th>
                 </tr>
             </thead>
-            <tbody id="products_table_body">
+            <tbody>
                 {% if products.items %}
                     {% for product in products.items %}
                         <tr>
@@ -104,7 +104,7 @@
 
 <!-- Pagination -->
 {% if products.pages > 1 %}
-    <nav aria-label="Page navigation" class="mt-4" id="products_pagination">
+    <nav aria-label="Page navigation" class="mt-4">
         <ul class="pagination justify-content-center">
             {% if products.has_prev %}
                 <li class="page-item">
@@ -142,104 +142,5 @@
         </ul>
     </nav>
 {% endif %}
-
-{% block extra_js %}
-<script>
-function createProductRow(product) {
-    const statusBadge = product.is_active ?
-        '<span class="badge bg-success">Active</span>' :
-        '<span class="badge bg-secondary">Inactive</span>';
-
-    const stockBadgeClass = product.current_stock > product.reorder_level ? 'success' : 'danger';
-    const lowStockLabel = product.is_low_stock ?
-        '<br><small class="text-danger"><i class="bi bi-exclamation-triangle"></i> Low Stock</small>' : '';
-
-    return `
-        <tr>
-            <td><code>${product.sku}</code></td>
-            <td>
-                <strong>${product.name}</strong>
-                ${lowStockLabel}
-            </td>
-            <td>$ ${product.cost_price.toFixed(2)}</td>
-            <td>$ ${product.selling_price.toFixed(2)}</td>
-            <td>
-                <span class="badge bg-${stockBadgeClass}">
-                    ${product.current_stock} units
-                </span>
-            </td>
-            <td>${product.profit_margin.toFixed(1)}%</td>
-            <td>${statusBadge}</td>
-            <td>
-                <div class="btn-group btn-group-sm" role="group">
-                    <a href="/product/${product.id}" class="btn btn-outline-primary">
-                        <i class="bi bi-eye"></i>
-                    </a>
-                    {% if current_user.is_manager() %}
-                    <a href="/product/${product.id}/edit" class="btn btn-outline-secondary">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                    {% endif %}
-                </div>
-            </td>
-        </tr>
-    `;
-}
-
-function renderProducts(products) {
-    const tbody = document.getElementById('products_table_body');
-    const pagination = document.getElementById('products_pagination');
-    const query = document.getElementById('product_search').value.trim();
-
-    if (!products.length) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center py-4 text-muted">
-                    ${query ? 'No products found matching your search.' : 'No products available.'}
-                </td>
-            </tr>
-        `;
-    } else {
-        tbody.innerHTML = products.map(createProductRow).join('');
-    }
-
-    if (query) {
-        pagination?.classList.add('d-none');
-    } else {
-        pagination?.classList.remove('d-none');
-    }
-}
-
-function searchProducts(query) {
-    fetch(`/api/products/search?q=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => {
-            renderProducts(data.products);
-        })
-        .catch(error => {
-            console.error('Product search failed:', error);
-        });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('product_search');
-    const searchForm = document.getElementById('product_search_form');
-
-    searchForm?.addEventListener('submit', function(event) {
-        event.preventDefault();
-        searchProducts(searchInput.value.trim());
-    });
-
-    searchInput?.addEventListener('input', function() {
-        const query = this.value.trim();
-        searchProducts(query);
-    });
-
-    if (!searchInput.value.trim()) {
-        searchProducts('');
-    }
-});
-</script>
-{% endblock %}
 
 {% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Product - Mycee Accessories Stock Control{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1>
+            <i class="bi bi-pencil"></i> Edit Product
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('edit_product', product_id=product.id) }}">
+                    <div class="form-group mb-3">
+                        <label for="sku" class="form-label">SKU (Product Code)</label>
+                        <input type="text" class="form-control" value="{{ product.sku }}" disabled>
+                        <small class="form-text text-muted">SKU cannot be changed</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="name" class="form-label">Product Name *</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ product.name }}" required>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ product.description or '' }}</textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="cost_price" class="form-label">Cost Price (USD $) *</label>
+                                <input type="number" class="form-control" id="cost_price" name="cost_price" value="{{ product.cost_price }}" required step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="selling_price" class="form-label">Selling Price (USD $) *</label>
+                                <input type="number" class="form-control" id="selling_price" name="selling_price" value="{{ product.selling_price }}" required step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="reorder_level" class="form-label">Reorder Level (Low Stock Alert)</label>
+                        <input type="number" class="form-control" id="reorder_level" name="reorder_level" value="{{ product.reorder_level }}" min="1">
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="current_stock" class="form-label">Current Stock Quantity</label>
+                        <input type="number" class="form-control" id="current_stock" name="current_stock" value="{{ product.current_stock }}" min="0">
+                        <small class="form-text text-muted">Enter the current stock quantity for this product.</small>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('products') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-header">
+                <h5 class="mb-0">Current Stock Info</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    <strong>Current Stock:</strong><br>
+                    <span class="badge bg-{% if product.is_low_stock() %}danger{% else %}success{% endif %}">{{ product.current_stock }} units</span>
+                </p>
+                <p>
+                    <strong>Profit Margin:</strong><br>
+                    {{ "%.1f"|format(product.get_profit_margin()) }}%
+                </p>
+                <p class="mb-0">
+                    <strong>Status:</strong><br>
+                    {% if product.is_active %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Data Backup - Mycee Accessories Stock Control{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1>
+            <i class="bi bi-cloud-upload"></i> Data Backup
+        </h1>
+        <p class="text-muted">Create and send data backups via email</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-envelope"></i> Email Backup
+                </h5>
+            </div>
+            <div class="card-body">
+                <p>Send a complete backup of all system data to <strong>myceeaccessories@gmail.com</strong></p>
+                <p class="text-muted small">Includes: Products, Stock Movements, Sales data in CSV format</p>
+
+                <form method="POST">
+                    <input type="hidden" name="backup_type" value="email">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send"></i> Send Backup Email
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Backup Info
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li><i class="bi bi-check-circle text-success me-2"></i>Products inventory</li>
+                    <li><i class="bi bi-check-circle text-success me-2"></i>Stock movements</li>
+                    <li><i class="bi bi-check-circle text-success me-2"></i>Sales records</li>
+                    <li><i class="bi bi-check-circle text-success me-2"></i>User activity</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

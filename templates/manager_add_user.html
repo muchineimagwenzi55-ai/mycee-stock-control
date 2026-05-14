@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Add User - Mycee Accessories Stock Control{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1>
+            <i class="bi bi-person-plus"></i> Add New User
+        </h1>
+        <p class="text-muted">Create a new user account with a defined role. Managers can create regular users and managers.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">User Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username *</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                        <div class="form-text">Username will be converted to lowercase</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password *</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role *</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="user">User</option>
+                            <option value="manager">Manager</option>
+                        </select>
+                        <div class="form-text">Managers can create regular users or managers, but not administrators.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">Confirm Password *</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-person-plus"></i> Create User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle"></i> Manager Permissions</h6>
+                    <p>As a manager, you can only create regular user accounts. Only administrators can create manager or admin accounts.</p>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <h6><i class="bi bi-exclamation-triangle"></i> Password Requirements</h6>
+                    <p>Passwords should be strong and secure. Users will be able to change their passwords after logging in.</p>
+                </div>
+                
+                <div class="alert alert-success">
+                    <h6><i class="bi bi-check-circle"></i> User Roles</h6>
+                    <p>New users will have regular user permissions, allowing them to view products, create sales, and manage basic stock operations.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

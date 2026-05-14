@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Mycee Accessories Management System{% endblock %}</title>
+    <title>{% block title %}Mycee Accessories Stock Control{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
@@ -14,7 +14,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-gold sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('dashboard') }}">
-                <i class="bi bi-box-seam"></i> Mycee Accessories Management
+                <i class="bi bi-box-seam"></i> Mycee Accessories Stock
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -27,17 +27,10 @@
                                 <i class="bi bi-speedometer2"></i> Dashboard
                             </a>
                         </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="productsDropdown" role="button" data-bs-toggle="dropdown">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('products') }}">
                                 <i class="bi bi-box"></i> Products
                             </a>
-                            <ul class="dropdown-menu" aria-labelledby="productsDropdown">
-                                <li><a class="dropdown-item" href="{{ url_for('products') }}">All Products</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('add_product') }}">Add Product</a></li>
-                                {% if current_user.is_admin() or current_user.is_manager() %}
-                                <li><a class="dropdown-item" href="{{ url_for('customized_necklaces') }}">Customized Necklaces</a></li>
-                                {% endif %}
-                            </ul>
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="stockDropdown" role="button" data-bs-toggle="dropdown">
@@ -58,14 +51,12 @@
                                 <i class="bi bi-file-earmark-pdf"></i> Reports
                             </a>
                         </li>
-                        {% if current_user.is_admin() or current_user.is_manager() %}
+                        {% if current_user.is_admin() %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('manage_users') }}">
-                                <i class="bi bi-people"></i> User Management
+                                <i class="bi bi-people"></i> Users
                             </a>
                         </li>
-                        {% endif %}
-                        {% if current_user.is_admin() %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('backup_data') }}">
                                 <i class="bi bi-cloud-upload"></i> Backup
@@ -111,7 +102,7 @@
     <!-- Footer -->
     <footer class="bg-dark text-white py-4 mt-5">
         <div class="container-fluid text-center">
-            <p class="mb-0">&copy; 2024 Mycee Accessories Management System</p>
+            <p class="mb-0">&copy; 2024 Mycee Accessories. Stock Control System v1.0</p>
         </div>
     </footer>
 

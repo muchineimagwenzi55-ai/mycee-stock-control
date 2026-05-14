@@ -38,18 +38,22 @@
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="product_search" class="form-label">Search Product</label>
-                        <input type="text" class="form-control" id="product_search" placeholder="Type to search products..." autocomplete="off">
-                        <div id="product_results" class="mt-2" style="max-height: 200px; overflow-y: auto; display: none;">
-                            <!-- Search results will appear here -->
-                        </div>
+                        <label for="product_id" class="form-label">Select Product</label>
+                        <select class="form-select" id="product_id">
+                            <option value="">Choose a product...</option>
+                            {% for product in products %}
+                                <option value="{{ product.id }}" data-price="{{ product.selling_price }}" data-stock="{{ product.current_stock }}">
+                                    {{ product.name }} (Stock: {{ product.current_stock }})
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="col-md-3">
                         <label for="quantity" class="form-label">Quantity</label>
                         <input type="number" class="form-control" id="quantity" min="1" value="1">
                     </div>
                     <div class="col-md-3 d-flex align-items-end">
-                        <button type="button" class="btn btn-success w-100" onclick="addToCart()" id="add_button" disabled>
+                        <button type="button" class="btn btn-success w-100" onclick="addToCart()">
                             <i class="bi bi-plus-circle"></i> Add
                         </button>
                     </div>
@@ -102,12 +106,6 @@
                 </div>
 
                 <div class="mt-3">
-                    <label for="sale_date" class="form-label">Sale Date</label>
-                    <input type="date" class="form-control form-control-sm" id="sale_date" name="sale_date" value="{{ current_date }}">
-                    <small class="form-text text-muted">Select the date for this sale. Use this for backdated or imported sales.</small>
-                </div>
-
-                <div class="mt-3">
                     <label for="notes" class="form-label">Notes</label>
                     <textarea class="form-control form-control-sm" id="notes" rows="3" placeholder="Any additional notes for this sale..."></textarea>
                 </div>
@@ -123,138 +121,48 @@
     </div>
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
 <script>
 let cartItems = [];
-let selectedProduct = null;
-
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('product_search');
-    const resultsDiv = document.getElementById('product_results');
-    
-    searchInput.addEventListener('input', function() {
-        const query = this.value.trim();
-        if (query === '') {
-            searchProducts('');
-            selectedProduct = null;
-            document.getElementById('add_button').disabled = true;
-            return;
-        }
-        
-        // Debounce search
-        clearTimeout(searchInput.searchTimeout);
-        searchInput.searchTimeout = setTimeout(() => {
-            searchProducts(query);
-        }, 300);
-    });
-
-    searchInput.addEventListener('focus', function() {
-        if (!this.value.trim()) {
-            searchProducts('');
-        }
-    });
-    
-    // Hide results when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
-            resultsDiv.style.display = 'none';
-        }
-    });
-});
-
-function searchProducts(query) {
-    fetch(`/api/products/search?q=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => {
-            displaySearchResults(data.products);
-        })
-        .catch(error => {
-            console.error('Search error:', error);
-        });
-}
-
-function displaySearchResults(products) {
-    const resultsDiv = document.getElementById('product_results');
-    resultsDiv.innerHTML = '';
-    
-    if (products.length === 0) {
-        resultsDiv.innerHTML = '<div class="text-muted p-2">No products found</div>';
-        resultsDiv.style.display = 'block';
-        selectedProduct = null;
-        document.getElementById('add_button').disabled = true;
-        return;
-    }
-    
-    products.forEach(product => {
-        const div = document.createElement('div');
-        div.className = 'p-2 border-bottom cursor-pointer search-result-item';
-        div.style.cursor = 'pointer';
-        const customLabel = product.custom_name ? `Name: ${product.custom_name} <br>` : '';
-        div.innerHTML = `
-            <strong>${product.name}</strong><br>
-            <small class="text-muted">${customLabel}SKU: ${product.sku} | Stock: ${product.current_stock} | Price: ₦${product.selling_price}</small>
-    
-    resultsDiv.style.display = 'block';
-}
-
-function selectProduct(product) {
-    selectedProduct = product;
-    document.getElementById('product_search').value = product.name;
-    document.getElementById('product_results').style.display = 'none';
-    document.getElementById('add_button').disabled = false;
-}
 
 function addToCart() {
-    if (!selectedProduct) {
-        alert('Please select a product first');
-        return;
-    }
-    
+    const productId = document.getElementById('product_id').value;
     const quantity = parseInt(document.getElementById('quantity').value);
+    const productSelect = document.getElementById('product_id');
+    const selectedOption = productSelect.options[productSelect.selectedIndex];
     
-    if (!quantity || quantity < 1) {
-        alert('Please enter a valid quantity');
+    if (!productId || !quantity) {
+        alert('Please select a product and enter quantity');
         return;
     }
     
-    if (quantity > selectedProduct.current_stock) {
-        alert(`Insufficient stock. Available: ${selectedProduct.current_stock}`);
+    const price = parseFloat(selectedOption.dataset.price);
+    const stock = parseInt(selectedOption.dataset.stock);
+    
+    if (quantity > stock) {
+        alert(`Insufficient stock. Available: ${stock}`);
         return;
     }
     
     // Check if product already in cart
-    const existing = cartItems.find(item => item.product_id == selectedProduct.id);
+    const existing = cartItems.find(item => item.product_id == productId);
     if (existing) {
-        if (existing.quantity + quantity > selectedProduct.current_stock) {
-            alert(`Insufficient stock. Available: ${selectedProduct.current_stock}`);
+        if (existing.quantity + quantity > stock) {
+            alert(`Insufficient stock. Available: ${stock}`);
             return;
         }
         existing.quantity += quantity;
     } else {
         cartItems.push({
-            product_id: selectedProduct.id,
-            name: selectedProduct.name,
-            sku: selectedProduct.sku,            custom_name: selectedProduct.custom_name || null,            unit_price: selectedProduct.selling_price,
+            product_id: productId,
+            product_name: selectedOption.text.split(' (Stock:')[0],
             quantity: quantity,
-            stock: selectedProduct.current_stock
+            unit_price: price
         });
     }
     
-    updateCartDisplay();
-    resetProductSelection();
-}
-
-function resetProductSelection() {
-    selectedProduct = null;
-    document.getElementById('product_search').value = '';
-    document.getElementById('quantity').value = '1';
-    document.getElementById('add_button').disabled = true;
-}
-
-function updateCartDisplay() {
     renderCart();
+    document.getElementById('product_id').value = '';
+    document.getElementById('quantity').value = 1;
 }
 
 function removeFromCart(index) {
@@ -271,12 +179,11 @@ function renderCart() {
         let html = '<div>';
         cartItems.forEach((item, index) => {
             const subtotal = item.quantity * item.unit_price;
-            const customLine = item.custom_name ? `<br><small class="text-muted">Name: ${item.custom_name}</small>` : '';
             html += `
                 <div class="cart-item">
                     <div>
-                        <strong>${item.name}</strong>${customLine}<br>
-                        <small class="text-muted">${item.sku} | ${item.quantity} × ₦${item.unit_price.toFixed(2)}</small>
+                        <strong>${item.product_name}</strong><br>
+                        <small class="text-muted">${item.quantity} × ₦${item.unit_price.toFixed(2)}</small>
                     </div>
                     <div class="text-end">
                         <strong>₦${subtotal.toFixed(2)}</strong><br>
@@ -300,8 +207,8 @@ function updateTotal() {
     const total = subtotal - discount;
     
     document.getElementById('item_count').textContent = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-    document.getElementById('subtotal').textContent = '₦' + subtotal.toFixed(2);
-    document.getElementById('total').textContent = '₦' + Math.max(0, total).toFixed(2);
+    document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+    document.getElementById('total').textContent = Math.max(0, total).toFixed(2);
 }
 
 function completeSale() {
@@ -313,8 +220,7 @@ function completeSale() {
     const saleData = {
         items: cartItems,
         discount: parseFloat(document.getElementById('discount').value) || 0,
-        notes: document.getElementById('notes').value,
-        sale_date: document.getElementById('sale_date').value
+        notes: document.getElementById('notes').value
     };
     
     fetch('{{ url_for("new_sale") }}', {

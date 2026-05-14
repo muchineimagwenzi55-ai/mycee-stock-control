@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}View Sale - Mycee Accessories Stock Control{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1>
+            <i class="bi bi-receipt"></i> Sale Details
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        {% if current_user.is_manager() %}
+            <form method="POST" action="{{ url_for('delete_sale', sale_id=sale.id) }}" class="d-inline me-2" onsubmit="return confirm('Are you sure you want to delete this sale? This will restore the stock.');">
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Delete Sale
+                </button>
+            </form>
+        {% endif %}
+        <a href="{{ url_for('sales') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Sales
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">{{ sale.sale_number }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p>
+                            <strong>Date & Time:</strong><br>
+                            {{ sale.created_at.strftime('%d %B %Y at %H:%M:%S') }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>
+                            <strong>Staff:</strong><br>
+                            {{ sale.created_by_user.username }} ({{ sale.created_by_user.role.capitalize() }})
+                        </p>
+                    </div>
+                </div>
+                {% if sale.notes %}
+                    <p>
+                        <strong>Notes:</strong><br>
+                        {{ sale.notes }}
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Sale Items</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Product</th>
+                            <th>SKU</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Cost</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in sale.items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td><code>{{ item.product.sku }}</code></td>
+                                <td>{{ item.quantity }}</td>
+                                <td>$ {{ "%.2f"|format(item.unit_price) }}</td>
+                                <td>$ {{ "%.2f"|format(item.cost_price) }}</td>
+                                <td><strong>$ {{ "%.2f"|format(item.subtotal) }}</strong></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-header">
+                <h5 class="mb-0">Sale Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="row mb-2">
+                        <div class="col">Total Items:</div>
+                        <div class="col text-end"><strong>{{ sale.items|length }}</strong></div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col">Total Amount:</div>
+                        <div class="col text-end"><strong>$ {{ "%.2f"|format(sale.total_amount) }}</strong></div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col">Total Cost:</div>
+                        <div class="col text-end"><strong>$ {{ "%.2f"|format(sale.total_cost) }}</strong></div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col">Discount:</div>
+                        <div class="col text-end"><strong>$ {{ "%.2f"|format(sale.discount) }}</strong></div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col"><strong>Profit:</strong></div>
+                        <div class="col text-end"><strong class="text-success">$ {{ "%.2f"|format(sale.get_profit()) }}</strong></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><strong>Margin:</strong></div>
+                        <div class="col text-end"><strong>{{ "%.1f"|format(sale.get_profit_margin()) }}%</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

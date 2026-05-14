@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Customized Necklaces - Mycee Accessories Stock Control{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1>
+            <i class="bi bi-gem"></i> Customized Necklaces
+        </h1>
+        <p class="text-muted">Create and manage personalized necklaces with custom names</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Create New Customized Necklace</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('customized_necklaces') }}">
+                    <div class="form-group mb-3">
+                        <label for="base_product_id" class="form-label">Base Necklace Product *</label>
+                        <select class="form-control" id="base_product_id" name="base_product_id" required>
+                            <option value="">Select a base necklace...</option>
+                            {% for product in base_products %}
+                            <option value="{{ product.id }}" {% if selected_base_product_id == product.id %}selected{% endif %}>{{ product.name }} ({{ product.sku }}) - ₦{{ product.selling_price }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Choose the base necklace to customize</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="name" class="form-label">Custom Name</label>
+                        <input type="text" class="form-control" id="name" name="name" placeholder="e.g., John Doe" maxlength="50">
+                        <small class="form-text text-muted">Enter a name to create one customized necklace, or use the bulk paste field below.</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="paste_names" class="form-label">Bulk Names (one per line)</label>
+                        <textarea class="form-control" id="paste_names" name="paste_names" rows="5" placeholder="Paste names here, one per line. Duplicate names are counted automatically."></textarea>
+                        <small class="form-text text-muted">Example: Nicole\nNicole\nNicole\nNicole will create one custom SKU with quantity 4.</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="quantity" class="form-label">Quantity to Create (single name only)</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" value="1" min="1" max="100">
+                        <small class="form-text text-muted">Only used when creating a single custom name.</small>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i> Create Customized Necklace
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Existing Customized Necklaces</h5>
+            </div>
+            <div class="card-body">
+                {% if customized_products %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Name</th>
+                                <th>Custom Name</th>
+                                <th>Stock</th>
+                                <th>Price</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in customized_products %}
+                            <tr>
+                                <td><code>{{ product.sku }}</code></td>
+                                <td>{{ product.name }}</td>
+                                <td>
+                                    {% if product.customization_details %}
+                                        {% set details = product.customization_details | fromjson %}
+                                        {{ details.name }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if product.current_stock > 0 %}
+                                        <span class="badge bg-success">{{ product.current_stock }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Out of Stock</span>
+                                    {% endif %}
+                                </td>
+                                <td>₦{{ product.selling_price }}</td>
+                                <td>{{ product.created_at.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No customized necklaces created yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-light mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">How It Works</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0 small">
+                    <li>Select a base necklace product</li>
+                    <li>Enter the custom name for engraving</li>
+                    <li>Each customized necklace gets a unique SKU</li>
+                    <li>Stock is tracked separately for each custom item</li>
+                    <li>When sold, the specific customized necklace is deducted</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Navigation</h5>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('products') }}" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="bi bi-list"></i> View All Products
+                </a>
+                <a href="{{ url_for('custom_reports') }}" class="btn btn-outline-secondary w-100 mb-2">
+                    <i class="bi bi-graph-up"></i> Custom Reports
+                </a>
+                <a href="{{ url_for('add_product') }}" class="btn btn-outline-secondary w-100 mb-2">
+                    <i class="bi bi-plus"></i> Add Base Product
+                </a>
+                <a href="{{ url_for('sales') }}" class="btn btn-outline-success w-100">
+                    <i class="bi bi-receipt"></i> View Sales
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

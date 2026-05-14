@@ -17,12 +17,15 @@
             <div class="card-body">
                 <form method="POST" action="{{ url_for('add_stock') }}">
                     <div class="form-group mb-3">
-                        <label for="product_search" class="form-label">Search Product *</label>
-                        <input type="text" class="form-control" id="product_search" placeholder="Type to search products..." autocomplete="off" required>
-                        <input type="hidden" id="product_id" name="product_id">
-                        <div id="product_results" class="mt-2" style="max-height: 200px; overflow-y: auto; display: none;">
-                            <!-- Search results will appear here -->
-                        </div>
+                        <label for="product_id" class="form-label">Product *</label>
+                        <select class="form-select" id="product_id" name="product_id" required>
+                            <option value="">Select a product...</option>
+                            {% for product in products %}
+                                <option value="{{ product.id }}">
+                                    {{ product.name }} (SKU: {{ product.sku }}) - Current: {{ product.current_stock }} units
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
 
                     <div class="form-group mb-3">
@@ -75,85 +78,5 @@
         </div>
     </div>
 </div>
-
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('product_search');
-    const resultsDiv = document.getElementById('product_results');
-    const productIdInput = document.getElementById('product_id');
-    
-    searchInput.addEventListener('input', function() {
-        const query = this.value.trim();
-        if (query === '') {
-            searchProducts('');
-            productIdInput.value = '';
-            return;
-        }
-        
-        // Debounce search
-        clearTimeout(searchInput.searchTimeout);
-        searchInput.searchTimeout = setTimeout(() => {
-            searchProducts(query);
-        }, 300);
-    });
-
-    searchInput.addEventListener('focus', function() {
-        if (!this.value.trim()) {
-            searchProducts('');
-        }
-    });
-    
-    // Hide results when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
-            resultsDiv.style.display = 'none';
-        }
-    });
-});
-
-function searchProducts(query) {
-    fetch(`/api/products/search?q=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => {
-            displaySearchResults(data.products);
-        })
-        .catch(error => {
-            console.error('Search error:', error);
-        });
-}
-
-function displaySearchResults(products) {
-    const resultsDiv = document.getElementById('product_results');
-    resultsDiv.innerHTML = '';
-    
-    if (products.length === 0) {
-        resultsDiv.innerHTML = '<div class="text-muted p-2">No products found</div>';
-        resultsDiv.style.display = 'block';
-        return;
-    }
-    
-    products.forEach(product => {
-        const div = document.createElement('div');
-        div.className = 'p-2 border-bottom cursor-pointer search-result-item';
-        div.style.cursor = 'pointer';
-        div.innerHTML = `
-            <strong>${product.name}</strong><br>
-            <small class="text-muted">SKU: ${product.sku} | Stock: ${product.current_stock}</small>
-        `;
-        div.addEventListener('click', () => selectProduct(product));
-        resultsDiv.appendChild(div);
-    });
-    
-    resultsDiv.style.display = 'block';
-}
-
-function selectProduct(product) {
-    document.getElementById('product_search').value = product.name;
-    document.getElementById('product_id').value = product.id;
-    document.getElementById('product_results').style.display = 'none';
-}
-</script>
-{% endblock %}
 
 {% endblock %}

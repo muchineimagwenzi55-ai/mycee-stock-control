@@ -18,7 +18,6 @@ class User(UserMixin, db.Model):
     # Relationships
     sales = db.relationship('Sale', backref='created_by_user', lazy=True, foreign_keys='Sale.created_by')
     stock_movements = db.relationship('StockMovement', backref='user', lazy=True)
-    comments = db.relationship('UserComment', foreign_keys='UserComment.user_id', backref='user', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
         """Hash and set password"""
@@ -45,17 +44,12 @@ class Product(db.Model):
     current_stock = db.Column(db.Integer, default=0)
     reorder_level = db.Column(db.Integer, default=10)  # Trigger low stock alert
     is_active = db.Column(db.Boolean, default=True)
-    is_customized = db.Column(db.Boolean, default=False)
-    customization_type = db.Column(db.String(50))  # necklace, bracelet, cuban
-    customization_details = db.Column(db.Text)  # JSON string for details like name
-    base_product_id = db.Column(db.Integer, db.ForeignKey('product.id'))  # Reference to base product if customized
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     stock_movements = db.relationship('StockMovement', backref='product', lazy=True, cascade='all, delete-orphan')
     sales_items = db.relationship('SaleItem', backref='product', lazy=True, cascade='all, delete-orphan')
-    base_product = db.relationship('Product', remote_side=[id], backref='customized_products')
     
     def get_profit_margin(self):
         """Calculate profit margin percentage"""
@@ -119,30 +113,3 @@ class SaleItem(db.Model):
     
     def __repr__(self):
         return f'<SaleItem {self.product.name} x{self.quantity}>'
-
-class ReportTemplate(db.Model):
-    """Custom report definitions created by users"""
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    author = db.relationship('User', foreign_keys=[created_by], backref='report_templates')
-
-    def __repr__(self):
-        return f'<ReportTemplate {self.name}>'
-
-class UserComment(db.Model):
-    """Comments or corrections left on user accounts"""
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    comment = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-
-    author = db.relationship('User', foreign_keys=[author_id], backref='authored_comments')
-
-    def __repr__(self):
-        return f'<UserComment user_id={self.user_id} author_id={self.author_id}>'
