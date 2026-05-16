@@ -25,7 +25,7 @@ with app.app_context():
             print("Updated 'bright' to manager role")
     else:
         # Create bright as manager
-        bright = User(username='bright', email='bright@example.com', role='manager')
+        bright = User(username='bright', email='bright.tinotenda@mycee.com', role='manager')
         bright.set_password('password123')  # Default password
         db.session.add(bright)
         db.session.commit()

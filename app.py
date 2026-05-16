@@ -1,6 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from functools import wraps
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
@@ -9,6 +12,9 @@ import os
 import io
 import csv
 import json
+import secrets
+import logging
+from cryptography.fernet import Fernet
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -21,13 +27,21 @@ load_dotenv()
 def create_app(config_name=None):
     """Application factory"""
     if config_name is None:
-        config_name = os.environ.get('FLASK_ENV') or 'development'
+        config_name = os.environ.get('FLASK_ENV') or 'production'
     
     app = Flask(__name__)
     app.config.from_object(config[config_name])
     
     # Initialize extensions
     db.init_app(app)
+    
+    # Initialize security extensions
+    csrf = CSRFProtect(app)
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"]
+    )
     
     mail = Mail(app)
     
@@ -40,6 +54,45 @@ def create_app(config_name=None):
     def load_user(user_id):
         return User.query.get(int(user_id))
     
+    # Security headers
+    @app.after_request
+    def add_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        return response
+    
+    # Data encryption key (generate once and store securely)
+    if not os.environ.get('ENCRYPTION_KEY'):
+        os.environ['ENCRYPTION_KEY'] = Fernet.generate_key().decode()
+    app.config['ENCRYPTION_KEY'] = os.environ.get('ENCRYPTION_KEY')
+    
+    def encrypt_data(data):
+        """Encrypt sensitive data"""
+        if isinstance(data, str):
+            data = data.encode()
+        f = Fernet(app.config['ENCRYPTION_KEY'].encode())
+        return f.encrypt(data).decode()
+    
+    def decrypt_data(encrypted_data):
+        """Decrypt sensitive data"""
+        try:
+            f = Fernet(app.config['ENCRYPTION_KEY'].encode())
+            return f.decrypt(encrypted_data.encode()).decode()
+        except:
+            return encrypted_data  # Return as-is if decryption fails
+    
+    def send_admin_notification(subject, body):
+        """Send notification to admin"""
+        try:
+            admin_email = app.config.get('ADMIN_EMAIL', 'tinotendamagwenzi10@gmail.com')
+            msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[admin_email])
+            msg.body = body
+            mail.send(msg)
+        except Exception as e:
+            app.logger.error(f"Failed to send admin notification: {str(e)}")
+    
     def create_default_admin():
         if not User.query.first():
             username = app.config.get('ADMIN_USERNAME', 'admin').strip().lower()
@@ -50,7 +103,7 @@ def create_app(config_name=None):
                 password = 'ChangeMe123!'
             existing_user = User.query.filter(func.lower(User.username) == username).first()
             if not existing_user:
-                admin = User(username=username, email=email, role='admin', is_active=True)
+                admin = User(username=username, email=email, role='admin', status='approved', is_active=True)
                 admin.set_password(password)
                 db.session.add(admin)
                 db.session.commit()
@@ -64,6 +117,7 @@ def create_app(config_name=None):
                 username=bright_username,
                 email='bright.tinotenda@mycee.com',
                 role='manager',
+                status='approved',
                 is_active=True
             )
             bright.set_password('Isabel2025')
@@ -97,8 +151,19 @@ def create_app(config_name=None):
             return f(*args, **kwargs)
         return decorated_function
     
+    def approved_required(f):
+        @wraps(f)
+        @login_required
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_approved():
+                flash('Your account is pending approval. Please contact an administrator.', 'warning')
+                return redirect(url_for('login'))
+            return f(*args, **kwargs)
+        return decorated_function
+    
     # ==================== Authentication Routes ====================
     @app.route('/register', methods=['GET', 'POST'])
+    @limiter.limit("5 per hour")
     def register():
         user_exists = User.query.first() is not None
         registration_enabled = app.config.get('REGISTRATION_ENABLED', False) or not user_exists
@@ -133,21 +198,46 @@ def create_app(config_name=None):
                 flash('Email already exists.', 'danger')
                 return redirect(url_for('register'))
 
+            # Create user with pending status
+            status = 'approved' if not user_exists else 'pending'
             role = 'admin' if not user_exists else 'user'
-            user = User(username=username, email=email, role=role)
+            
+            user = User(username=username, email=email, role=role, status=status)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
 
-            if role == 'admin':
-                flash('Admin registration successful. Please log in.', 'success')
+            if status == 'pending':
+                # Send admin notification
+                admin_email = app.config.get('ADMIN_EMAIL', 'tinotendamagwenzi10@gmail.com')
+                subject = f"New User Registration Requires Approval - {username}"
+                body = f"""
+A new user has registered and requires your approval:
+
+Username: {username}
+Email: {email}
+Role Requested: {role}
+Registration Time: {datetime.utcnow()}
+
+Please log in to the admin panel to approve or reject this user.
+
+Login URL: https://mycee-stock-controlgunicorn-bind-0-0-0-0.onrender.com/login
+Admin Panel: https://mycee-stock-controlgunicorn-bind-0-0-0-0.onrender.com/admin/users
+
+Thank you,
+Mycee Accessories System
+"""
+                send_admin_notification(subject, body)
+                flash('Registration successful! Your account is pending approval. You will receive an email once approved.', 'info')
             else:
-                flash('Registration successful! Please log in.', 'success')
+                flash('Admin registration successful. Please log in.', 'success')
+            
             return redirect(url_for('login'))
 
         return render_template('register.html', registration_enabled=registration_enabled)
     
     @app.route('/login', methods=['GET', 'POST'])
+    @limiter.limit("10 per hour")
     def login():
         if request.method == 'POST':
             username = request.form.get('username')
@@ -159,8 +249,15 @@ def create_app(config_name=None):
             user = User.query.filter(func.lower(User.username) == username).first()
             
             if user and user.check_password(password) and user.is_active:
-                login_user(user)
-                return redirect(url_for('dashboard'))
+                if user.status == 'pending':
+                    flash('Your account is pending approval. Please contact an administrator.', 'warning')
+                    return redirect(url_for('login'))
+                elif user.status == 'rejected':
+                    flash('Your account has been rejected. Please contact an administrator.', 'danger')
+                    return redirect(url_for('login'))
+                else:
+                    login_user(user)
+                    return redirect(url_for('dashboard'))
             else:
                 flash('Invalid username or password.', 'danger')
         
@@ -1305,16 +1402,48 @@ def create_app(config_name=None):
                 flash('Email already exists.', 'danger')
                 return redirect(url_for('manager_add_user'))
             
+            # Restrict manager role creation to Bright only
+            if role == 'manager' and not current_user.can_create_manager():
+                flash('Only Bright Tinotenda can create manager accounts.', 'danger')
+                role = 'user'  # Default to user role
+            
             if role not in ['user', 'manager']:
                 role = 'user'
             
-            # Create new user with allowed role
-            user = User(username=username, email=email, role=role)
+            # Create new user with approved status and track creator
+            user = User(username=username, email=email, role=role, status='approved', created_by=current_user.id)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
             
-            flash(f'User created successfully as {role}.', 'success')
+            # Send welcome email to new user
+            try:
+                subject = f"Welcome to Mycee Accessories System - Account Created"
+                body = f"""
+Your account has been created successfully!
+
+Username: {username}
+Email: {email}
+Role: {role}
+
+You can now log in to the system at:
+https://mycee-stock-controlgunicorn-bind-0-0-0-0.onrender.com/login
+
+Please change your password after first login for security.
+
+Welcome to the Mycee Accessories team!
+
+Best regards,
+Mycee Accessories System
+Created by: {current_user.username}
+"""
+                msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[email])
+                msg.body = body
+                mail.send(msg)
+            except Exception as e:
+                app.logger.error(f"Failed to send welcome email: {str(e)}")
+            
+            flash(f'User {username} created successfully as {role}. Welcome email sent.', 'success')
             return redirect(url_for('manager_add_user'))
         
         return render_template('manager_add_user.html')
@@ -1370,8 +1499,89 @@ def create_app(config_name=None):
     @manager_required
     def manage_users():
         page = request.args.get('page', 1, type=int)
-        users = User.query.order_by(User.username).paginate(page=page, per_page=20)
-        return render_template('manage_users.html', users=users)
+        status_filter = request.args.get('status', 'all')
+        
+        query = User.query
+        if status_filter == 'pending':
+            query = query.filter_by(status='pending')
+        elif status_filter == 'approved':
+            query = query.filter_by(status='approved')
+        elif status_filter == 'rejected':
+            query = query.filter_by(status='rejected')
+        
+        users = query.order_by(User.created_at.desc()).paginate(page=page, per_page=20)
+        return render_template('manage_users.html', users=users, status_filter=status_filter)
+    
+    @app.route('/admin/user/<int:user_id>/approve', methods=['POST'])
+    @admin_required
+    def approve_user(user_id):
+        user = User.query.get_or_404(user_id)
+        if user.status != 'pending':
+            flash('User is not pending approval.', 'warning')
+        else:
+            user.status = 'approved'
+            db.session.commit()
+            
+            # Send approval email to user
+            try:
+                subject = "Account Approved - Mycee Accessories System"
+                body = f"""
+Your account has been approved!
+
+Username: {user.username}
+Email: {user.email}
+
+You can now log in to the system at:
+https://mycee-stock-controlgunicorn-bind-0-0-0-0.onrender.com/login
+
+Welcome to the Mycee Accessories team!
+
+Best regards,
+Mycee Accessories System Administrator
+"""
+                msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[user.email])
+                msg.body = body
+                mail.send(msg)
+            except Exception as e:
+                app.logger.error(f"Failed to send approval email: {str(e)}")
+            
+            flash(f'User {user.username} has been approved and notified via email.', 'success')
+        
+        return redirect(url_for('manage_users'))
+    
+    @app.route('/admin/user/<int:user_id>/reject', methods=['POST'])
+    @admin_required
+    def reject_user(user_id):
+        user = User.query.get_or_404(user_id)
+        if user.status != 'pending':
+            flash('User is not pending approval.', 'warning')
+        else:
+            user.status = 'rejected'
+            db.session.commit()
+            
+            # Send rejection email to user
+            try:
+                subject = "Account Registration - Mycee Accessories System"
+                body = f"""
+We regret to inform you that your account registration has been declined.
+
+Username: {user.username}
+Email: {user.email}
+
+If you believe this is an error, please contact your system administrator.
+
+Best regards,
+Mycee Accessories System Administrator
+"""
+                msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[user.email])
+                msg.body = body
+                mail.send(msg)
+            except Exception as e:
+                app.logger.error(f"Failed to send rejection email: {str(e)}")
+            
+            flash(f'User {user.username} has been rejected and notified via email.', 'info')
+        
+        return redirect(url_for('manage_users'))
     
     @app.route('/admin/user/<int:user_id>/role', methods=['POST'])
     @manager_required
@@ -1383,11 +1593,14 @@ def create_app(config_name=None):
             flash('Invalid role.', 'danger')
         elif new_role == 'admin' and not current_user.is_admin():
             flash('Only administrators can assign the admin role.', 'danger')
+        elif new_role == 'manager' and not current_user.can_create_manager():
+            flash('Only Bright Tinotenda can create manager accounts.', 'danger')
         else:
             if user.role == 'admin' and not current_user.is_admin():
                 flash('Only administrators may change admin accounts.', 'danger')
             else:
                 user.role = new_role
+                user.created_by = current_user.id  # Track who changed the role
                 db.session.commit()
                 flash(f'User {user.username} role changed to {new_role}.', 'success')
         

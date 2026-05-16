@@ -79,7 +79,14 @@
                 {% endif %}
             {% endwith %}
 
-            <form method="POST" action="{{ url_for('register') }}">
+            {% if registration_enabled is not defined or registration_enabled %}
+                <form method="POST" action="{{ url_for('register') }}">
+            {% else %}
+                <div class="alert alert-warning">
+                    Self-registration is currently closed. Please ask your administrator to create your account or log in if you already have one.
+                </div>
+                <form method="POST" action="{{ url_for('register') }}">
+            {% endif %}
                 <div class="form-group">
                     <label for="username" class="form-label">Username</label>
                     <input type="text" class="form-control" id="username" name="username" required autofocus>
@@ -97,8 +104,12 @@
                     <label for="confirm_password" class="form-label">Confirm Password</label>
                     <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                 </div>
-                <button type="submit" class="btn btn-primary btn-register w-100">Register</button>
+                <button type="submit" class="btn btn-primary btn-register w-100" {% if registration_enabled is defined and not registration_enabled %}disabled{% endif %}>Register</button>
             </form>
+
+            <div class="alert alert-info mt-3">
+                <i class="bi bi-info-circle"></i> <strong>Note:</strong> After registration, your account will be pending approval by an administrator. You will receive an email notification once your account is approved.
+            </div>
 
             <div class="login-link">
                 <p class="mb-2">Already have an account?</p>

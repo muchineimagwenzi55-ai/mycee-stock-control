@@ -19,6 +19,25 @@
     </div>
 </div>
 
+<!-- Status Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h5>Filter Users by Status</h5>
+            </div>
+            <div class="col-md-6">
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('manage_users', status='all') }}" class="btn btn-outline-secondary {% if status_filter == 'all' %}active{% endif %}">All</a>
+                    <a href="{{ url_for('manage_users', status='pending') }}" class="btn btn-outline-warning {% if status_filter == 'pending' %}active{% endif %}">Pending</a>
+                    <a href="{{ url_for('manage_users', status='approved') }}" class="btn btn-outline-success {% if status_filter == 'approved' %}active{% endif %}">Approved</a>
+                    <a href="{{ url_for('manage_users', status='rejected') }}" class="btn btn-outline-danger {% if status_filter == 'rejected' %}active{% endif %}">Rejected</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Users Table -->
 <div class="card">
     <div class="table-responsive">
@@ -32,7 +51,7 @@
                     <th>Joined</th>
                     <th>Sales</th>
                     <th>Movements</th>
-                    <th>Action</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -46,6 +65,13 @@
                             </span>
                         </td>
                         <td>
+                            {% if user.status == 'approved' %}
+                                <span class="badge bg-success">Approved</span>
+                            {% elif user.status == 'pending' %}
+                                <span class="badge bg-warning">Pending</span>
+                            {% elif user.status == 'rejected' %}
+                                <span class="badge bg-danger">Rejected</span>
+                            {% endif %}
                             {% if user.is_active %}
                                 <span class="badge bg-success">Active</span>
                             {% else %}
@@ -60,10 +86,26 @@
                                 <a href="{{ url_for('user_activity', user_id=user.id) }}" class="btn btn-outline-primary" title="View activity">
                                     <i class="bi bi-clock-history"></i>
                                 </a>
+                                
+                                {% if current_user.is_admin() and user.status == 'pending' %}
+                                    <form method="POST" action="{{ url_for('approve_user', user_id=user.id) }}" style="display:inline;">
+                                        <button type="submit" class="btn btn-outline-success" title="Approve user">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('reject_user', user_id=user.id) }}" style="display:inline;">
+                                        <button type="submit" class="btn btn-outline-danger" title="Reject user">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                                
                                 <form method="POST" action="{{ url_for('change_user_role', user_id=user.id) }}" style="display:inline;">
                                     <select name="role" class="form-select form-select-sm" onchange="this.form.submit()">
                                         <option value="user" {% if user.role == 'user' %}selected{% endif %}>User</option>
+                                        {% if current_user.can_create_manager() %}
                                         <option value="manager" {% if user.role == 'manager' %}selected{% endif %}>Manager</option>
+                                        {% endif %}
                                         {% if current_user.is_admin() %}
                                         <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
                                         {% endif %}
@@ -96,10 +138,10 @@
         <ul class="pagination justify-content-center">
             {% if users.has_prev %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('manage_users', page=1) }}">First</a>
+                    <a class="page-link" href="{{ url_for('manage_users', page=1, status=status_filter) }}">First</a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('manage_users', page=users.prev_num) }}">Previous</a>
+                    <a class="page-link" href="{{ url_for('manage_users', page=users.prev_num, status=status_filter) }}">Previous</a>
                 </li>
             {% endif %}
 
@@ -111,7 +153,7 @@
                         </li>
                     {% else %}
                         <li class="page-item">
-                            <a class="page-link" href="{{ url_for('manage_users', page=page_num) }}">{{ page_num }}</a>
+                            <a class="page-link" href="{{ url_for('manage_users', page=page_num, status=status_filter) }}">{{ page_num }}</a>
                         </li>
                     {% endif %}
                 {% else %}
@@ -121,10 +163,10 @@
 
             {% if users.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('manage_users', page=users.next_num) }}">Next</a>
+                    <a class="page-link" href="{{ url_for('manage_users', page=users.next_num, status=status_filter) }}">Next</a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('manage_users', page=users.pages) }}">Last</a>
+                    <a class="page-link" href="{{ url_for('manage_users', page=users.pages, status=status_filter) }}">Last</a>
                 </li>
             {% endif %}
         </ul>
@@ -133,12 +175,24 @@
 
 <div class="card mt-4 bg-light">
     <div class="card-header">
-        <h5 class="mb-0">User Roles</h5>
+        <h5 class="mb-0">User Roles & Status</h5>
     </div>
     <div class="card-body">
-        <p><strong>User:</strong> Can view dashboard, products, sales, and reports</p>
-        <p><strong>Manager:</strong> Can add/edit products, manage stock, create sales, and view reports</p>
-        <p><strong>Admin:</strong> Full access including user management</p>
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Roles:</h6>
+                <p><strong>User:</strong> Can view dashboard, products, sales, and reports</p>
+                <p><strong>Manager:</strong> Can add/edit products, manage stock, create sales, and view reports</p>
+                <p><strong>Admin:</strong> Full access including user management and approvals</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Status:</h6>
+                <p><strong>Pending:</strong> User registered but awaiting admin approval</p>
+                <p><strong>Approved:</strong> User can access the system</p>
+                <p><strong>Rejected:</strong> User registration was declined</p>
+                <p><strong>Active/Inactive:</strong> Account activation status</p>
+            </div>
+        </div>
     </div>
 </div>
 

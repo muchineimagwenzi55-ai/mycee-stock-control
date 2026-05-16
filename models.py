@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import os
 
 db = SQLAlchemy()
 
@@ -12,13 +13,18 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), default='user')  # admin, manager, user
+    status = db.Column(db.String(20), default='approved')  # pending, approved, rejected
     is_active = db.Column(db.Boolean, default=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Who created this user
+    email_verification_token = db.Column(db.String(100), unique=True, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     sales = db.relationship('Sale', backref='created_by_user', lazy=True, foreign_keys='Sale.created_by')
     stock_movements = db.relationship('StockMovement', backref='user', lazy=True)
     comments = db.relationship('UserComment', foreign_keys='UserComment.user_id', backref='user', lazy=True, cascade='all, delete-orphan')
+    created_users = db.relationship('User', backref=db.backref('creator', remote_side=[id]), lazy=True)
     
     def set_password(self, password):
         """Hash and set password"""
@@ -33,6 +39,17 @@ class User(UserMixin, db.Model):
     
     def is_manager(self):
         return self.role in ['admin', 'manager']
+    
+    def is_approved(self):
+        return self.status == 'approved' and self.is_active
+    
+    def can_create_manager(self):
+        """Only Bright Tinotenda (manager) can create other managers"""
+        return self.username.lower() == 'bright' and 'tinotenda' in self.email.lower() and self.is_manager()
+    
+    def can_approve_users(self):
+        """Only admin can approve users"""
+        return self.is_admin()
 
 class Product(db.Model):
     """Product model"""
