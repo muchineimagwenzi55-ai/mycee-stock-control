@@ -235,6 +235,8 @@ Mycee Accessories System
             return redirect(url_for('login'))
 
         return render_template('register.html', registration_enabled=registration_enabled)
+
+        # Registration is disabled. Only managers can create users.
     
     @app.route('/login', methods=['GET', 'POST'])
     @limiter.limit("10 per hour")
