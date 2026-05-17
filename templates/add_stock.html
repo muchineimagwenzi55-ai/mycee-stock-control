@@ -16,6 +16,7 @@
         <div class="card">
             <div class="card-body">
                 <form method="POST" action="{{ url_for('add_stock') }}">
+                                        {{ csrf_token() }}
                     <div class="form-group mb-3">
                         <label for="product_search" class="form-label">Search Product *</label>
                         <input type="text" class="form-control" id="product_search" placeholder="Type to search products..." autocomplete="off" required>
