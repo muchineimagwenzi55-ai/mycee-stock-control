@@ -1440,79 +1440,34 @@ Created by: {current_user.username}
         if not query_text:
             products = Product.query.filter_by(is_active=True).order_by(Product.sku).limit(50).all()
         else:
-            products = Product.query.filter(
-                db.and_(
-                    Product.is_active == True,
-                    db.or_(
-                        Product.name.ilike(f'%{query_text}%'),
-                        Product.sku.ilike(f'%{query_text}%')
-                    )
-                )
-            ).order_by(Product.sku).limit(50).all()
-        
-                        msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[email])
-                        msg.body = body
-                        mail.send(msg)
-                    except Exception as e:
-                        app.logger.error(f"Failed to send welcome email: {str(e)}")
-                    flash(f'User {username} created successfully as {role}. Welcome email sent.', 'success')
+            form = ManagerAddUserForm()
+            if form.validate_on_submit():
+                username = form.username.data.strip().lower()
+                email = form.email.data
+                password = form.password.data
+                confirm_password = form.confirm_password.data
+                role = form.role.data or 'user'
+                if password != confirm_password:
+                    flash('Passwords do not match.', 'danger')
                     return redirect(url_for('manager_add_user'))
-                return render_template('manager_add_user.html', form=form)
-        product_data = []
-        for product in products:
-            custom_name = None
-            if product.customization_details:
+                if User.query.filter(func.lower(User.username) == username).first():
+                    flash('Username already exists.', 'danger')
+                    return redirect(url_for('manager_add_user'))
+                if User.query.filter_by(email=email).first():
+                    flash('Email already exists.', 'danger')
+                    return redirect(url_for('manager_add_user'))
+                if role == 'manager' and not current_user.can_create_manager():
+                    flash('Only Bright Tinotenda can create manager accounts.', 'danger')
+                    role = 'user'
+                if role not in ['user', 'manager']:
+                    role = 'user'
+                user = User(username=username, email=email, role=role, status='approved', created_by=current_user.id)
+                user.set_password(password)
+                db.session.add(user)
+                db.session.commit()
                 try:
-                    details = json.loads(product.customization_details)
-                    custom_name = details.get('name')
-                except Exception:
-                    custom_name = None
-
-            product_data.append({
-                'id': product.id,
-                'name': product.name,
-                'sku': product.sku,
-                'custom_name': custom_name,
-                'customization_type': product.customization_type,
-                'cost_price': product.cost_price,
-                'selling_price': product.selling_price,
-                'current_stock': product.current_stock,
-                'reorder_level': product.reorder_level,
-                'is_active': product.is_active,
-                'profit_margin': round(product.get_profit_margin(), 1),
-                'is_low_stock': product.is_low_stock()
-            })
-        
-        return jsonify({'products': product_data})
-    
-    # ==================== Admin ====================
-    @app.route('/admin/users')
-    @manager_required
-    def manage_users():
-        page = request.args.get('page', 1, type=int)
-        status_filter = request.args.get('status', 'all')
-        
-        query = User.query
-        if status_filter == 'pending':
-            query = query.filter_by(status='pending')
-        elif status_filter == 'approved':
-            query = query.filter_by(status='approved')
-        elif status_filter == 'rejected':
-            query = query.filter_by(status='rejected')
-        
-        users = query.order_by(User.created_at.desc()).paginate(page=page, per_page=20)
-        return render_template('manage_users.html', users=users, status_filter=status_filter)
-    
-    @app.route('/admin/user/<int:user_id>/approve', methods=['POST'])
-    @admin_required
-    def approve_user(user_id):
-        user = User.query.get_or_404(user_id)
-        if user.status != 'pending':
-            flash('User is not pending approval.', 'warning')
-        else:
-            user.status = 'approved'
-            db.session.commit()
-            
+                    subject = f"Welcome to Mycee Accessories System - Account Created"
+                    body = f"""
             # Send approval email to user
             try:
                 subject = "Account Approved - Mycee Accessories System"
@@ -1530,6 +1485,14 @@ Welcome to the Mycee Accessories team!
 Best regards,
 Mycee Accessories System Administrator
 """
+                    msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[email])
+                    msg.body = body
+                    mail.send(msg)
+                except Exception as e:
+                    app.logger.error(f"Failed to send welcome email: {str(e)}")
+                flash(f'User {username} created successfully as {role}. Welcome email sent.', 'success')
+                return redirect(url_for('manager_add_user'))
+            return render_template('manager_add_user.html', form=form)
                 msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[user.email])
                 msg.body = body
                 mail.send(msg)
