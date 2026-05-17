@@ -20,7 +20,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('customized_necklaces') }}">
-                                        {{ csrf_token() }}
+                    {{ csrf_token() }}
                     <div class="form-group mb-3">
                         <label for="base_product_id" class="form-label">Base Necklace Product *</label>
                         <select class="form-control" id="base_product_id" name="base_product_id" required>
