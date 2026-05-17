@@ -1,3 +1,10 @@
+from wtforms import SelectField
+class ManagerAddUserForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    email = StringField('Email', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    confirm_password = PasswordField('Confirm Password', validators=[DataRequired()])
+    role = SelectField('Role', choices=[('user', 'User'), ('manager', 'Manager')], validators=[DataRequired()])
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort, session
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField
@@ -1379,53 +1386,6 @@ Mycee Accessories System
     @manager_required
     def manager_add_user():
         if request.method == 'POST':
-            username = request.form.get('username')
-            email = request.form.get('email')
-            password = request.form.get('password')
-            confirm_password = request.form.get('confirm_password')
-            role = request.form.get('role', 'user')
-            
-            # Validation
-            if not username or not email or not password:
-                flash('All fields are required.', 'danger')
-                return redirect(url_for('manager_add_user'))
-            
-            if password != confirm_password:
-                flash('Passwords do not match.', 'danger')
-                return redirect(url_for('manager_add_user'))
-            
-            # Normalize username to lowercase
-            username = username.strip().lower()
-            
-            if User.query.filter(func.lower(User.username) == username).first():
-                flash('Username already exists.', 'danger')
-                return redirect(url_for('manager_add_user'))
-            
-            if User.query.filter_by(email=email).first():
-                flash('Email already exists.', 'danger')
-                return redirect(url_for('manager_add_user'))
-            
-            # Restrict manager role creation to Bright only
-            if role == 'manager' and not current_user.can_create_manager():
-                flash('Only Bright Tinotenda can create manager accounts.', 'danger')
-                role = 'user'  # Default to user role
-            
-            if role not in ['user', 'manager']:
-                role = 'user'
-            
-            # Create new user with approved status and track creator
-            user = User(username=username, email=email, role=role, status='approved', created_by=current_user.id)
-            user.set_password(password)
-            db.session.add(user)
-            db.session.commit()
-            
-            # Send welcome email to new user
-            try:
-                subject = f"Welcome to Mycee Accessories System - Account Created"
-                body = f"""
-Your account has been created successfully!
-
-Username: {username}
 Email: {email}
 Role: {role}
 
@@ -1443,16 +1403,36 @@ Created by: {current_user.username}
                 msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[email])
                 msg.body = body
                 mail.send(msg)
-            except Exception as e:
-                app.logger.error(f"Failed to send welcome email: {str(e)}")
-            
-            flash(f'User {username} created successfully as {role}. Welcome email sent.', 'success')
-            return redirect(url_for('manager_add_user'))
-        
-        return render_template('manager_add_user.html')
-    
-    # ==================== API Endpoints ====================
-    @app.route('/api/products/search')
+            @manager_required
+            def manager_add_user():
+                form = ManagerAddUserForm()
+                if form.validate_on_submit():
+                    username = form.username.data.strip().lower()
+                    email = form.email.data
+                    password = form.password.data
+                    confirm_password = form.confirm_password.data
+                    role = form.role.data or 'user'
+                    if password != confirm_password:
+                        flash('Passwords do not match.', 'danger')
+                        return redirect(url_for('manager_add_user'))
+                    if User.query.filter(func.lower(User.username) == username).first():
+                        flash('Username already exists.', 'danger')
+                        return redirect(url_for('manager_add_user'))
+                    if User.query.filter_by(email=email).first():
+                        flash('Email already exists.', 'danger')
+                        return redirect(url_for('manager_add_user'))
+                    if role == 'manager' and not current_user.can_create_manager():
+                        flash('Only Bright Tinotenda can create manager accounts.', 'danger')
+                        role = 'user'
+                    if role not in ['user', 'manager']:
+                        role = 'user'
+                    user = User(username=username, email=email, role=role, status='approved', created_by=current_user.id)
+                    user.set_password(password)
+                    db.session.add(user)
+                    db.session.commit()
+                    try:
+                        subject = f"Welcome to Mycee Accessories System - Account Created"
+                        body = f"""
     @login_required
     def api_search_products():
         query_text = request.args.get('q', '').strip()
@@ -1470,6 +1450,14 @@ Created by: {current_user.username}
                 )
             ).order_by(Product.sku).limit(50).all()
         
+                        msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[email])
+                        msg.body = body
+                        mail.send(msg)
+                    except Exception as e:
+                        app.logger.error(f"Failed to send welcome email: {str(e)}")
+                    flash(f'User {username} created successfully as {role}. Welcome email sent.', 'success')
+                    return redirect(url_for('manager_add_user'))
+                return render_template('manager_add_user.html', form=form)
         product_data = []
         for product in products:
             custom_name = None
