@@ -1,4 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort, session
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField
+from wtforms.validators import DataRequired
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
 from flask_wtf.csrf import CSRFProtect
@@ -241,15 +247,11 @@ Mycee Accessories System
     @app.route('/login', methods=['GET', 'POST'])
     @limiter.limit("10 per hour")
     def login():
-        if request.method == 'POST':
-            username = request.form.get('username')
-            password = request.form.get('password')
-            
-            if username:
-                username = username.strip().lower()
-            
+        form = LoginForm()
+        if form.validate_on_submit():
+            username = form.username.data.strip().lower()
+            password = form.password.data
             user = User.query.filter(func.lower(User.username) == username).first()
-            
             if user and user.check_password(password) and user.is_active:
                 if user.status == 'pending':
                     flash('Your account is pending approval. Please contact an administrator.', 'warning')
@@ -262,8 +264,7 @@ Mycee Accessories System
                     return redirect(url_for('dashboard'))
             else:
                 flash('Invalid username or password.', 'danger')
-        
-        return render_template('login.html')
+        return render_template('login.html', form=form)
     
     @app.route('/logout')
     @login_required
