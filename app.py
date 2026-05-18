@@ -345,7 +345,7 @@ Mycee Accessories System
             initial_stock = request.form.get('initial_stock', 0, type=int)
             
             # Validation
-            if not sku or not name or not cost_price or not selling_price:
+            if not sku or not name or cost_price is None or selling_price is None:
                 flash('Required fields are missing.', 'danger')
                 return redirect(url_for('add_product'))
             
