@@ -1386,66 +1386,6 @@ Mycee Accessories System
     @manager_required
     def manager_add_user():
         if request.method == 'POST':
-            # ...existing code...
-            try:
-                subject = f"Welcome to Mycee Accessories System - Account Created"
-                body = f"""
-Email: {email}
-Role: {role}
-
-You can now log in to the system at:
-https://mycee-stock-controlgunicorn-bind-0-0-0-0.onrender.com/login
-
-Please change your password after first login for security.
-
-Welcome to the Mycee Accessories team!
-
-Best regards,
-Mycee Accessories System
-Created by: {current_user.username}
-"""
-                msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[email])
-                msg.body = body
-                mail.send(msg)
-            except Exception as e:
-                print(f"Email error: {e}")
-            @manager_required
-            def manager_add_user():
-                form = ManagerAddUserForm()
-                if form.validate_on_submit():
-                    username = form.username.data.strip().lower()
-                    email = form.email.data
-                    password = form.password.data
-                    confirm_password = form.confirm_password.data
-                    role = form.role.data or 'user'
-                    if password != confirm_password:
-                        flash('Passwords do not match.', 'danger')
-                        return redirect(url_for('manager_add_user'))
-                    if User.query.filter(func.lower(User.username) == username).first():
-                        flash('Username already exists.', 'danger')
-                        return redirect(url_for('manager_add_user'))
-                    if User.query.filter_by(email=email).first():
-                        flash('Email already exists.', 'danger')
-                        return redirect(url_for('manager_add_user'))
-                    if role == 'manager' and not current_user.can_create_manager():
-                        flash('Only Bright Tinotenda can create manager accounts.', 'danger')
-                        role = 'user'
-                    if role not in ['user', 'manager']:
-                        role = 'user'
-                    user = User(username=username, email=email, role=role, status='approved', created_by=current_user.id)
-                    user.set_password(password)
-                    db.session.add(user)
-                    db.session.commit()
-                    try:
-                        subject = f"Welcome to Mycee Accessories System - Account Created"
-                        body = f"""
-    @login_required
-    def api_search_products():
-        query_text = request.args.get('q', '').strip()
-        
-        if not query_text:
-            products = Product.query.filter_by(is_active=True).order_by(Product.sku).limit(50).all()
-        else:
             form = ManagerAddUserForm()
             if form.validate_on_submit():
                 username = form.username.data.strip().lower()
@@ -1471,22 +1411,34 @@ Created by: {current_user.username}
                 user.set_password(password)
                 db.session.add(user)
                 db.session.commit()
+                # Send welcome email
                 try:
                     subject = f"Welcome to Mycee Accessories System - Account Created"
                     body = f"""
-            # Send approval email to user
-            try:
-                subject = "Account Approved - Mycee Accessories System"
-                body = f"""
-Your account has been approved!
-
-Username: {user.username}
-Email: {user.email}
+Email: {email}
+Role: {role}
 
 You can now log in to the system at:
 https://mycee-stock-controlgunicorn-bind-0-0-0-0.onrender.com/login
 
+Please change your password after first login for security.
+
 Welcome to the Mycee Accessories team!
+
+Best regards,
+Mycee Accessories System
+Created by: {current_user.username}
+"""
+                    msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[email])
+                    msg.body = body
+                    mail.send(msg)
+                except Exception as e:
+                    print(f"Email error: {e}")
+                flash('User created and email sent!', 'success')
+                return redirect(url_for('manage_users'))
+        else:
+            form = ManagerAddUserForm()
+        return render_template('manager_add_user.html', form=form)
 
 Best regards,
 Mycee Accessories System Administrator
