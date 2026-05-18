@@ -1386,23 +1386,27 @@ Mycee Accessories System
     @manager_required
     def manager_add_user():
         if request.method == 'POST':
-Email: {email}
-Role: {role}
+            # ...existing code...
+            try:
+            subject = f"Welcome to Mycee Accessories System - Account Created"
+            body = f"""
+    Email: {email}
+    Role: {role}
 
-You can now log in to the system at:
-https://mycee-stock-controlgunicorn-bind-0-0-0-0.onrender.com/login
+    You can now log in to the system at:
+    https://mycee-stock-controlgunicorn-bind-0-0-0-0.onrender.com/login
 
-Please change your password after first login for security.
+    Please change your password after first login for security.
 
-Welcome to the Mycee Accessories team!
+    Welcome to the Mycee Accessories team!
 
-Best regards,
-Mycee Accessories System
-Created by: {current_user.username}
-"""
-                msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[email])
-                msg.body = body
-                mail.send(msg)
+    Best regards,
+    Mycee Accessories System
+    Created by: {current_user.username}
+    """
+            msg = Message(subject, sender=app.config['MAIL_DEFAULT_SENDER'], recipients=[email])
+            msg.body = body
+            mail.send(msg)
             @manager_required
             def manager_add_user():
                 form = ManagerAddUserForm()
